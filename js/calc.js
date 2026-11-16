@@ -1,6 +1,7 @@
 // Fórmulas e validações puras (sem acesso ao banco). Todos os valores em centavos.
 
-export const TIPOS = ['Material', 'Mão de obra', 'Equipamento', 'Serviço misto'];
+// Administrativo: projetos, taxas, cartório, impostos, terreno/financiamento — custo da obra que não é material nem execução.
+export const TIPOS = ['Material', 'Mão de obra', 'Serviço misto', 'Equipamento', 'Administrativo'];
 export const NATUREZAS = ['Normal', 'Upgrade', 'Retrabalho', 'Imprevisto'];
 export const FORMAS = ['Pix', 'Dinheiro', 'Débito', 'Cartão de crédito', 'Boleto', 'Transferência', 'Outro'];
 export const AJUSTES = ['Aditivo', 'Redução', 'Desconto de quitação'];

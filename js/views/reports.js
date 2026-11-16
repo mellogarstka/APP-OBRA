@@ -54,14 +54,17 @@ export async function renderReports(root, ctx, tab = 'categoria') {
 
   if (tab === 'tipo') {
     const g = groupRows(rows, r => r.item.tipo);
-    let mat = 0, mo = 0, outros = 0;
-    for (const r of rows) { const s = splitMaterialMO(r.item, r.totals, r.adj); mat += s.material; mo += s.maoDeObra; outros += s.outros; }
+    let mat = 0, mo = 0, outros = 0, adm = 0;
+    for (const r of rows) {
+      if (r.item.tipo === 'Administrativo') { adm += r.totals.atualizado; continue; }
+      const s = splitMaterialMO(r.item, r.totals, r.adj); mat += s.material; mo += s.maoDeObra; outros += s.outros;
+    }
     body = `
       <div class="kpis" style="margin-top:0">
         <div class="kpi"><div class="label">Materiais (incl. parcela de serviços mistos)</div><div class="value num">${money(mat)}</div></div>
         <div class="kpi"><div class="label">Mão de obra (incl. parcela de serviços mistos)</div><div class="value num">${money(mo)}</div></div>
       </div>
-      ${outros ? `<p class="tiny muted" style="margin:8px 4px">Equipamentos e serviços mistos sem separação informada: <b class="num">${money(outros)}</b></p>` : ''}
+      <p class="tiny muted" style="margin:8px 4px;line-height:1.6">${outros ? `Equipamentos e serviços mistos sem separação informada: <b class="num">${money(outros)}</b><br>` : ''}${adm ? `Administrativo (projetos, taxas, terreno/financiamento): <b class="num">${money(adm)}</b>` : ''}</p>
       <div class="section-title">Por tipo cadastrado</div>${legend}
       <div class="list">${barRows(g.sort((a, b) => TIPOS.indexOf(a[0]) - TIPOS.indexOf(b[0])), k => k, k => `#/itens?tipo=${encodeURIComponent(k)}`, total)}</div>`;
   }

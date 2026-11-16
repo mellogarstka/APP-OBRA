@@ -88,7 +88,7 @@ export async function renderNovo(root, ctx) {
 
   // categoria sugerida pelo tipo, enquanto o usuário não escolher manualmente
   let catManual = false;
-  const SUG = { 'Mão de obra': 'Mão de obra', 'Equipamento': 'Equipamentos' };
+  const SUG = { 'Mão de obra': 'Mão de obra', 'Equipamento': 'Equipamentos', 'Administrativo': 'Projetos e documentação' };
   function autoCategoria() {
     if (catManual || !SUG[st.tipo]) return;
     const c = cats.find(x => x.nome === SUG[st.tipo]);
