@@ -85,3 +85,14 @@ export function excedeHTML(d) {
 
 export function $(sel, root = document) { return root.querySelector(sel); }
 export function $$(sel, root = document) { return [...root.querySelectorAll(sel)]; }
+
+// ---------------------------------------------------------------- tema
+export const TEMAS = [['escuro', 'Escuro', 'Padrão. Fundo escuro, minimalista.'], ['claro', 'Claro', 'Fundo claro, para ambientes muito iluminados.'], ['automatico', 'Automático', 'Segue o tema do celular ou do computador.']];
+export function temaAtual() { try { return localStorage.getItem('obra-tema') || 'escuro'; } catch { return 'escuro'; } }
+export function aplicarTema(t = temaAtual()) {
+  try { localStorage.setItem('obra-tema', t); } catch { /* sem armazenamento */ }
+  const d = t === 'automatico' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : (t === 'claro' ? 'light' : 'dark');
+  document.documentElement.dataset.theme = d;
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = d === 'dark' ? '#0b0f0d' : '#1f5f4a';
+}
+try { matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { if (temaAtual() === 'automatico') aplicarTema('automatico'); }); } catch { /* navegador antigo */ }

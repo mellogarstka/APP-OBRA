@@ -1,10 +1,11 @@
 import * as S from '../store.js';
 import { money, dateTimeBR, todayISO } from '../fmt.js';
-import { esc, icon, sheet, toast, confirmSheet } from '../ui.js';
+import { esc, icon, sheet, toast, confirmSheet, TEMAS, temaAtual, aplicarTema } from '../ui.js';
 import { handleError, refresh } from '../actions.js';
 import * as Sync from '../sync.js';
 
 const MENU = [
+  ['aparencia', 'Aparência', 'Tema escuro, claro ou automático'],
   ['nuvem', 'Sincronização (celular + computador)', 'Conta, status da nuvem'],
   ['obra', 'Dados da obra', 'Nome, proprietário, endereço'],
   ['categorias', 'Categorias e subcategorias', 'Criar, renomear, desativar'],
@@ -29,8 +30,19 @@ export async function renderConfig(root, ctx, sec) {
         ${Sync.currentUser() ? `Dados neste aparelho e na nuvem (${esc(Sync.currentUser().email)}).` : 'Dados guardados somente neste aparelho.'} Versão do esquema: ${S.SCHEMA}.</p>`;
     return;
   }
-  const fn = { nuvem, obra, categorias, etapas, fornecedores, avisos, backup, historico, instalar }[sec];
+  const fn = { aparencia, nuvem, obra, categorias, etapas, fornecedores, avisos, backup, historico, instalar }[sec];
   if (fn) await fn(root, ctx); else root.innerHTML = '<div class="empty">Seção não encontrada.</div>';
+}
+
+// ---------------------------------------------------------- aparência
+async function aparencia(root) {
+  const atual = temaAtual();
+  root.innerHTML = `<div class="card">${TEMAS.map(([k, l, d]) => `<label class="opt ${k === atual ? 'on' : ''}"><input type="radio" name="tema" value="${k}" ${k === atual ? 'checked' : ''}><div><b>${l}</b><small>${d}</small></div></label>`).join('')}</div>
+    <p class="tiny muted" style="margin:10px 4px">A escolha vale para este aparelho.</p>`;
+  root.querySelectorAll('[name=tema]').forEach(r => r.addEventListener('change', () => {
+    aplicarTema(r.value);
+    root.querySelectorAll('.opt').forEach(o => o.classList.toggle('on', o.contains(r)));
+  }));
 }
 
 // ---------------------------------------------------------- nuvem
@@ -117,18 +129,70 @@ async function nuvem(root) {
 }
 
 // ---------------------------------------------------------- obra
+const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+const soDigitos = (v) => String(v || '').replace(/\D/g, '');
+const fmtCep = (v) => { const d = soDigitos(v).slice(0, 8); return d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d; };
+
+/** Endereço em uma linha (topo do app e cabeçalho dos relatórios). */
+export function enderecoLinha(o = {}) {
+  if (!o.logradouro && !o.cidade) return o.endereco || '';
+  const rua = [o.logradouro, o.numero].filter(Boolean).join(', ') + (o.complemento ? ' - ' + o.complemento : '');
+  const cid = [o.cidade, o.uf].filter(Boolean).join('/');
+  return [rua, o.bairro, cid].filter(Boolean).join(' · ') + (o.cep ? ` · CEP ${fmtCep(o.cep)}` : '');
+}
+
 async function obra(root, ctx) {
   const o = ctx.settings.obra || {};
-  root.innerHTML = `<form class="card" data-f>
-    <label class="field"><span>Nome da obra</span><input class="input" name="nome" value="${esc(o.nome)}" placeholder="ex.: Residência João Paulo"></label>
-    <label class="field"><span>Proprietário</span><input class="input" name="proprietario" value="${esc(o.proprietario)}"></label>
-    <label class="field"><span>Endereço</span><input class="input" name="endereco" value="${esc(o.endereco)}"></label>
-    <label class="field"><span>Data de início (opcional)</span><input class="input" type="date" name="inicio" value="${esc(o.inicio)}"></label>
+  const v = (k) => esc(o[k] || '');
+  // compatibilidade: endereço livre antigo vai para o campo logradouro
+  const logradouro = o.logradouro ?? (o.cidade ? '' : o.endereco || '');
+  root.innerHTML = `<form class="card" data-f autocomplete="off">
+    <label class="field"><span>Nome da obra</span><input class="input" name="nome" value="${v('nome')}" placeholder="ex.: Residência João Paulo"></label>
+    <label class="field"><span>Proprietário</span><input class="input" name="proprietario" value="${v('proprietario')}"></label>
+    <div class="section-title" style="margin-top:6px">Endereço</div>
+    <div class="grid2">
+      <label class="field"><span>CEP</span><input class="input num" name="cep" inputmode="numeric" maxlength="9" placeholder="00000-000" value="${esc(fmtCep(o.cep))}"></label>
+      <div class="field"><span>&nbsp;</span><div class="small muted" data-cep-msg style="padding:12px 2px">Digite o CEP para preencher o endereço.</div></div>
+    </div>
+    <label class="field"><span>Logradouro</span><input class="input" name="logradouro" value="${esc(logradouro)}"></label>
+    <div class="grid2">
+      <label class="field"><span>Número</span><input class="input" name="numero" inputmode="numeric" value="${v('numero')}"></label>
+      <label class="field"><span>Complemento</span><input class="input" name="complemento" value="${v('complemento')}" placeholder="opcional"></label>
+    </div>
+    <label class="field"><span>Bairro</span><input class="input" name="bairro" value="${v('bairro')}"></label>
+    <div class="grid-city">
+      <label class="field"><span>Cidade</span><input class="input" name="cidade" value="${v('cidade')}"></label>
+      <label class="field"><span>UF</span><select class="input" name="uf"><option value=""></option>${UFS.map(u => `<option ${o.uf === u ? 'selected' : ''}>${u}</option>`).join('')}</select></label>
+    </div>
+    <label class="field"><span>Data de início (opcional)</span><input class="input" type="date" name="inicio" value="${v('inicio')}"></label>
     <button class="btn primary block">Salvar</button></form>
-    <p class="tiny muted" style="margin:10px 4px">Esses dados aparecem no topo do app e no cabeçalho dos relatórios em PDF.</p>`;
-  root.querySelector('[data-f]').addEventListener('submit', async (e) => {
+    <p class="tiny muted" style="margin:10px 4px">Esses dados aparecem no topo do app e no cabeçalho dos relatórios. A busca do CEP usa o serviço público ViaCEP e precisa de internet; sem internet, preencha manualmente.</p>`;
+  const f = root.querySelector('[data-f]');
+  const cep = f.querySelector('[name=cep]'), msg = root.querySelector('[data-cep-msg]');
+  let ultimo = soDigitos(o.cep);
+  cep.addEventListener('input', async () => {
+    cep.value = fmtCep(cep.value);
+    const d = soDigitos(cep.value);
+    if (d.length !== 8 || d === ultimo) return;
+    ultimo = d;
+    msg.textContent = 'Buscando…';
+    try {
+      const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 8000);
+      const r = await fetch(`https://viacep.com.br/ws/${d}/json/`, { signal: ctrl.signal }).then(x => x.json()); clearTimeout(t);
+      if (r.erro) { msg.textContent = 'CEP não encontrado. Preencha manualmente.'; return; }
+      const set = (n, val) => { if (val) f.querySelector(`[name=${n}]`).value = val; };
+      set('logradouro', r.logradouro); set('bairro', r.bairro); set('cidade', r.localidade); set('uf', r.uf);
+      if (r.complemento && !f.querySelector('[name=complemento]').value) set('complemento', r.complemento);
+      msg.textContent = r.logradouro ? 'Endereço preenchido. Informe o número.' : 'CEP geral da cidade: informe rua e bairro.';
+      f.querySelector(`[name=${r.logradouro ? 'numero' : 'logradouro'}]`).focus();
+    } catch { msg.textContent = 'Sem conexão para buscar o CEP. Preencha manualmente.'; }
+  });
+  f.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const fd = Object.fromEntries(new FormData(e.target));
+    const fd = Object.fromEntries(new FormData(f));
+    fd.cep = soDigitos(fd.cep);
+    for (const k of Object.keys(fd)) fd[k] = String(fd[k]).trim();
+    fd.endereco = enderecoLinha(fd);
     await S.setSetting('obra', fd); toast('Dados da obra salvos.'); location.hash = '#/inicio';
   });
 }

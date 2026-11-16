@@ -1,8 +1,8 @@
 import * as S from '../store.js';
 import { money, moneyPlain, parseMoney, dateBR, dateTimeBR, todayISO } from '../fmt.js';
 import { TIPOS, NATUREZAS, FORMAS } from '../calc.js';
-import { esc, sheet, toast, confirmSheet } from '../ui.js';
-import { paymentSheet, markPaidSheet, adjustmentSheet, correctSheet, cancelPaymentFlow, cancelAdjustmentFlow, handleError, refresh } from '../actions.js';
+import { esc, sheet, toast, confirmSheet, icon } from '../ui.js';
+import { paymentSheet, markPaidSheet, adjustmentSheet, correctSheet, cancelPaymentFlow, editPaymentSheet, cancelAdjustmentFlow, handleError, refresh } from '../actions.js';
 import { pill } from './home.js';
 
 const statusTag = (s) => `<span class="tag ${s === 'Quitado' ? 'ok' : s === 'Cancelado' ? 'danger' : 'brand'}">${s}</span>`;
@@ -64,14 +64,14 @@ export async function renderItem(root, ctx, id) {
     <div class="list">${prog.length ? prog.map(p => `
       <div class="li">${pill(p.data, p.data < hoje ? 'late' : p.data === hoje ? 'today' : '')}
         <div class="grow"><div class="title num">${money(p.valor)}</div><div class="meta">${p.parcela ? `Parcela ${p.parcela}/${p.totalParcelas} · ` : ''}${esc(p.descricao || p.forma || '')}</div></div>
-        ${cancelado ? '' : `<div class="right"><button class="quick-pay" data-pay="${p.id}">Marcar pago</button></div><button class="icon-btn" data-cp="${p.id}" title="Cancelar pagamento" style="color:var(--ink-3)">✕</button>`}
+        ${cancelado ? '' : `<div class="right"><button class="quick-pay" data-pay="${p.id}">Marcar pago</button></div><button class="icon-btn" data-ep="${p.id}" title="Corrigir pagamento" aria-label="Corrigir pagamento">${icon('edit')}</button><button class="icon-btn" data-cp="${p.id}" title="Cancelar pagamento" aria-label="Cancelar pagamento" style="color:var(--ink-3)">✕</button>`}
       </div>`).join('') : '<div class="empty">Nenhum pagamento programado.</div>'}</div>
 
     <div class="section-title">Pagamentos realizados</div>
     <div class="list">${real.length ? real.map(p => `
       <div class="li">${pill(p.dataPago || p.data)}
         <div class="grow"><div class="title num">${money(p.valor)}</div><div class="meta">${p.parcela ? `Parcela ${p.parcela}/${p.totalParcelas} · ` : ''}${esc([p.descricao, p.forma].filter(Boolean).join(' · '))}${p.dataNaoInformada ? ' · <span class="tag warn">data não informada</span>' : ''}</div></div>
-        ${cancelado ? '' : `<button class="icon-btn" data-cp="${p.id}" title="Cancelar" style="color:var(--ink-3)">✕</button>`}
+        ${cancelado ? '' : `<button class="icon-btn" data-ep="${p.id}" title="Corrigir pagamento" aria-label="Corrigir pagamento">${icon('edit')}</button><button class="icon-btn" data-cp="${p.id}" title="Cancelar" aria-label="Cancelar pagamento" style="color:var(--ink-3)">✕</button>`}
       </div>`).join('') : '<div class="empty">Nenhum pagamento realizado.</div>'}
       ${canc.map(p => `<div class="li strike"><div class="grow"><div class="title num">${money(p.valor)}</div><div class="meta">Cancelado · ${dateBR(p.dataPago || p.data)}</div></div></div>`).join('')}
     </div>
@@ -98,9 +98,10 @@ export async function renderItem(root, ctx, id) {
   `;
 
   root.addEventListener('click', async (e) => {
-    const el = e.target.closest('[data-a],[data-pay],[data-cp],[data-ca],[data-edit]');
+    const el = e.target.closest('[data-a],[data-pay],[data-cp],[data-ep],[data-ca],[data-edit]');
     if (!el) return;
     if (el.dataset.pay) return markPaidSheet(b.pays.find(p => p.id === el.dataset.pay), item.descricao);
+    if (el.dataset.ep) return editPaymentSheet(b.pays.find(p => p.id === el.dataset.ep));
     if (el.dataset.cp) return cancelPaymentFlow(b.pays.find(p => p.id === el.dataset.cp));
     if (el.dataset.ca) return cancelAdjustmentFlow(b.adj.find(a => a.id === el.dataset.ca));
     if (el.hasAttribute('data-edit')) return editSheet(ctx, item);

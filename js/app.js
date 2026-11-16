@@ -12,7 +12,7 @@ import * as Sync from './sync.js';
 
 let lastTab = 'inicio'; // aba de origem: a tela do item mantém destacada a aba de onde veio
 const NAV = [['inicio', 'Início', 'home'], ['itens', 'Itens', 'list'], ['pagamentos', 'Pagamentos', 'pay'], ['relatorios', 'Relatórios', 'chart'], ['config', 'Configurações', 'gear']];
-const CONFIG_TITLES = { nuvem: 'Sincronização', obra: 'Dados da obra', categorias: 'Categorias', etapas: 'Etapas', fornecedores: 'Fornecedores', avisos: 'Avisos', backup: 'Backup', historico: 'Histórico geral', instalar: 'Instalar' };
+const CONFIG_TITLES = { aparencia: 'Aparência', nuvem: 'Sincronização', obra: 'Dados da obra', categorias: 'Categorias', etapas: 'Etapas', fornecedores: 'Fornecedores', avisos: 'Avisos', backup: 'Backup', historico: 'Histórico geral', instalar: 'Instalar' };
 
 async function buildCtx() {
   const data = await S.loadAll();

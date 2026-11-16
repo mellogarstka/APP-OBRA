@@ -1,7 +1,7 @@
 // Regras de negócio: toda operação financeira valida, grava atomicamente e registra histórico.
 import * as db from './db.js';
 import { itemTotals, derivedStatus, validatePayment, validateReduction, splitInstallments } from './calc.js';
-import { uid, todayISO, addMonths, isValidISO, money } from './fmt.js';
+import { uid, todayISO, addMonths, isValidISO, money, dateBR } from './fmt.js';
 import { CATEGORIAS, ETAPAS } from './seed.js';
 
 export const APP_ID = 'obra-financeiro';
@@ -280,6 +280,43 @@ export async function markPaid(paymentId, { dataPago, valor, restante = null }) 
       ops.push(hist('Pagamento', p.id, p.itemId, 'Restante sem data', { novo: `${money(diff)} passou a saldo sem data` }));
     }
   }
+  await db.writeAll(ops);
+  return np;
+}
+
+/**
+ * Corrige um pagamento (erro de digitação): valor, data, forma, descrição, parcela.
+ * Realizado: a data editada é a data em que foi pago. Programado: o vencimento.
+ * Valor continua limitado ao saldo do item (sem contar o próprio pagamento).
+ */
+export async function editPayment(paymentId, ch, motivo = '') {
+  const p = await db.get('payments', paymentId);
+  if (!p || p.situacao === 'Cancelado') throw new ValidationError('Pagamento cancelado não pode ser editado.');
+  const b = await getBundle(p.itemId);
+  if (b.item.status === 'Cancelado') throw new ValidationError('Item cancelado.');
+  const real = p.situacao === 'Realizado';
+  const np = { ...p };
+  if (ch.valor !== undefined) {
+    if (!Number.isInteger(ch.valor) || ch.valor <= 0) throw new ValidationError('Informe um valor válido.');
+    const v = validatePayment(b.totals, ch.valor, p.valor);
+    if (!v.ok) throw new ValidationError(MSG_EXCEDE, { tipo: 'excede', itemId: p.itemId, ...v });
+    np.valor = ch.valor;
+  }
+  if (ch.data !== undefined) {
+    if (!isValidISO(ch.data)) throw new ValidationError('Data inválida.');
+    if (real) { np.dataPago = ch.data; np.data = ch.data; np.dataNaoInformada = false; } else np.data = ch.data;
+  }
+  for (const k of ['forma', 'descricao']) if (ch[k] !== undefined) np[k] = ch[k] || null;
+  for (const k of ['parcela', 'totalParcelas']) if (ch[k] !== undefined) np[k] = Number.isInteger(ch[k]) && ch[k] > 0 ? ch[k] : null;
+  const rotulo = { valor: 'valor', data: real ? 'data do pagamento' : 'vencimento', forma: 'forma', descricao: 'descrição', parcela: 'parcela', totalParcelas: 'total de parcelas' };
+  const fmt = (k, v) => v == null || v === '' ? '—' : k === 'valor' ? money(v) : k === 'data' ? dateBR(v) : String(v);
+  const antes = { ...p, data: real ? (p.dataPago || p.data) : p.data }, depois = { ...np, data: real ? np.dataPago : np.data };
+  const ops = [{ store: 'payments', value: np }];
+  for (const k of Object.keys(rotulo)) {
+    if ((antes[k] ?? null) !== (depois[k] ?? null))
+      ops.push(hist('Pagamento', p.id, p.itemId, 'Pagamento corrigido', { campo: rotulo[k], anterior: fmt(k, antes[k]), novo: fmt(k, depois[k]), motivo: motivo || null }));
+  }
+  if (ops.length === 1) return p; // nada mudou
   await db.writeAll(ops);
   return np;
 }

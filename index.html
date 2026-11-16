@@ -3,8 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1f5f4a">
-  <meta name="description" content="Controle financeiro da construção — funciona offline, dados somente no aparelho.">
+  <meta name="theme-color" content="#0b0f0d">
+  <script>
+    // tema antes de desenhar a tela (evita piscar): escuro (padrão), claro ou automático
+    (function () {
+      var t = 'escuro'; try { t = localStorage.getItem('obra-tema') || 'escuro'; } catch (e) {}
+      var d = t === 'automatico' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : (t === 'claro' ? 'light' : 'dark');
+      document.documentElement.dataset.theme = d;
+      document.querySelector('meta[name=theme-color]').content = d === 'dark' ? '#0b0f0d' : '#1f5f4a';
+    })();
+  </script>
+  <meta name="description" content="Controle financeiro da construção — funciona offline e sincroniza celular e computador.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

@@ -31,17 +31,19 @@ export async function renderItens(root, ctx, params) {
 
   root.innerHTML = `
     <div class="search">${icon('search')}<input class="input" data-f="q" placeholder="Buscar descrição, fornecedor, observação" value="${esc(F.q)}"></div>
+    <div class="chip-label">Tipo de custo</div>
+    <div class="tabs" data-tipos>${[['', 'Todos'], ...TIPOS.map(t => [t, t])].map(([k, l]) => `<button class="tab ${F.tipo === k ? 'active' : ''}" data-tipo="${esc(k)}">${l}</button>`).join('')}</div>
+    <div class="chip-label">Período da compra</div>
     <div class="tabs">${PERIODOS.map(([k, l]) => `<button class="tab ${F.per === k ? 'active' : ''}" data-per="${k}">${l}</button>`).join('')}</div>
     <div class="grid2 ${F.per === 'custom' ? '' : 'hidden'}" data-custom>
       <label class="field"><span>De</span><input class="input" type="date" data-f="de" value="${F.de}"></label>
       <label class="field"><span>Até</span><input class="input" type="date" data-f="ate" value="${F.ate}"></label>
     </div>
-    <details class="more" ${Object.entries(F).some(([k, v]) => !['q', 'per', 'de', 'ate'].includes(k) && v) ? 'open' : ''}>
-      <summary>Filtros</summary>
+    <details class="more" ${Object.entries(F).some(([k, v]) => !['q', 'per', 'de', 'ate', 'tipo'].includes(k) && v) ? 'open' : ''}>
+      <summary>Mais filtros <span class="tag info hidden" data-nf></span></summary>
       <div class="inner"><div class="filters">
         ${sel('cat', 'Categoria', cats.map(c => [c.id, c.nome]))}
         ${sel('etapa', 'Etapa', ctx.stages.sort((a, b) => a.ordem - b.ordem).map(s => [s.id, s.nome]))}
-        ${sel('tipo', 'Tipo', TIPOS.map(t => [t, t]))}
         ${sel('nat', 'Natureza', NATUREZAS.map(t => [t, t]))}
         ${sel('forn', 'Fornecedor', ctx.suppliers.map(s => [s.id, s.nome]).sort((a, b) => a[1].localeCompare(b[1])))}
         ${sel('forma', 'Forma de pagamento', FORMAS.map(t => [t, t]))}
@@ -73,7 +75,9 @@ export async function renderItens(root, ctx, params) {
       if (!inRange(it.dataCompra, range)) return false;
       return true;
     }).sort((a, b) => b.item.dataCompra.localeCompare(a.item.dataCompra) || b.item.criadoEm - a.item.criadoEm);
-    root.querySelector('[data-count]').textContent = `${rows.length} item(ns)`;
+    root.querySelector('[data-count]').textContent = `${rows.length} ${rows.length === 1 ? 'item' : 'itens'}`;
+    const nf = ['cat', 'etapa', 'nat', 'forn', 'forma', 'status', 'semdata', 'inc', 'sub'].filter(k => F[k]).length;
+    const b = root.querySelector('[data-nf]'); b.textContent = nf ? `${nf} ativo${nf > 1 ? 's' : ''}` : ''; b.classList.toggle('hidden', !nf);
     root.querySelector('[data-sum]').textContent = money(rows.filter(r => r.status !== 'Cancelado').reduce((s, r) => s + r.totals.atualizado, 0));
     root.querySelector('[data-list]').innerHTML = rows.length ? rows.map(r => `
       <a class="li ${r.status === 'Cancelado' ? 'strike' : ''}" href="#/item/${r.item.id}">
@@ -89,6 +93,11 @@ export async function renderItens(root, ctx, params) {
 
   root.addEventListener('input', (e) => { const k = e.target.dataset.f; if (k) { F[k] = e.target.value; draw(); } });
   root.addEventListener('change', (e) => { const k = e.target.dataset.f; if (k) { F[k] = e.target.value; draw(); } });
+  root.querySelectorAll('[data-tipo]').forEach(b => b.addEventListener('click', () => {
+    F.tipo = b.dataset.tipo;
+    root.querySelectorAll('[data-tipo]').forEach(x => x.classList.toggle('active', x === b));
+    draw();
+  }));
   root.querySelectorAll('[data-per]').forEach(b => b.addEventListener('click', () => {
     F.per = b.dataset.per;
     root.querySelectorAll('[data-per]').forEach(x => x.classList.toggle('active', x === b));
@@ -102,18 +111,31 @@ export async function renderItens(root, ctx, params) {
 }
 
 // ------------------------------------------------------------ pagamentos
-const PF = { sit: '', per: 'todos', de: '', ate: '' };
+const PF = { sit: '', per: 'todos', de: '', ate: '', tipo: '', cat: '', etapa: '', nat: '' };
 
 export async function renderPagamentos(root, ctx, params) {
   if (params.get('sit') !== null) PF.sit = params.get('sit');
   const itemOf = (id) => ctx.rows.find(r => r.item.id === id);
+  const cats = ctx.categories.filter(c => !c.parentId).sort((a, b) => a.ordem - b.ordem);
+  const sel = (name, label, opts) => `<select class="input" data-f="${name}"><option value="">${label}</option>${opts.map(([v, l]) => `<option value="${esc(v)}" ${PF[name] === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
   root.innerHTML = `
     <div class="tabs">${[['', 'Todos'], ['Realizado', 'Realizados'], ['Programado', 'Programados'], ['Cancelado', 'Cancelados']].map(([k, l]) => `<button class="tab ${PF.sit === k ? 'active' : ''}" data-sit="${k}">${l}</button>`).join('')}</div>
+    <div class="chip-label">Tipo de custo</div>
+    <div class="tabs">${[['', 'Todos'], ...TIPOS.map(t => [t, t])].map(([k, l]) => `<button class="tab ${PF.tipo === k ? 'active' : ''}" data-tipo="${esc(k)}">${l}</button>`).join('')}</div>
+    <div class="chip-label">Período</div>
     <div class="tabs">${PERIODOS.map(([k, l]) => `<button class="tab ${PF.per === k ? 'active' : ''}" data-per="${k}">${l}</button>`).join('')}</div>
     <div class="grid2 ${PF.per === 'custom' ? '' : 'hidden'}" data-custom>
       <label class="field"><span>De</span><input class="input" type="date" data-f="de" value="${PF.de}"></label>
       <label class="field"><span>Até</span><input class="input" type="date" data-f="ate" value="${PF.ate}"></label>
     </div>
+    <details class="more" ${PF.cat || PF.etapa || PF.nat ? 'open' : ''}>
+      <summary>Mais filtros</summary>
+      <div class="inner"><div class="filters">
+        ${sel('cat', 'Categoria', cats.map(c => [c.id, c.nome]))}
+        ${sel('etapa', 'Etapa', [...ctx.stages].sort((a, b) => a.ordem - b.ordem).map(x => [x.id, x.nome]))}
+        ${sel('nat', 'Natureza', NATUREZAS.map(t => [t, t]))}
+      </div><button class="btn ghost sm" data-clear style="margin-bottom:12px">Limpar filtros</button></div>
+    </details>
     <div class="row between small" style="margin:0 4px 10px"><span class="muted">Data considerada: pagamento (realizados) ou vencimento (programados)</span></div>
     <div class="kpis" data-tot style="margin:0 0 14px"></div>
     <div data-list></div>`;
@@ -126,6 +148,10 @@ export async function renderPagamentos(root, ctx, params) {
       if (PF.sit && p.situacao !== PF.sit) return false;
       if (!PF.sit && p.situacao === 'Cancelado') return false;
       if (r.item.status === 'Cancelado' && p.situacao !== 'Cancelado') return false;
+      if (PF.tipo && r.item.tipo !== PF.tipo) return false;
+      if (PF.cat && r.item.categoriaId !== PF.cat && r.item.subcategoriaId !== PF.cat) return false;
+      if (PF.etapa && r.item.etapaId !== PF.etapa) return false;
+      if (PF.nat && r.item.natureza !== PF.nat) return false;
       return inRange(p.situacao === 'Realizado' ? (p.dataPago || p.data) : p.data, range);
     }).map(p => ({ ...p, _d: p.situacao === 'Realizado' ? (p.dataPago || p.data) : p.data }))
       .sort((a, b) => PF.sit === 'Programado' ? a._d.localeCompare(b._d) : b._d.localeCompare(a._d));
@@ -152,6 +178,8 @@ export async function renderPagamentos(root, ctx, params) {
   };
   draw();
 
+  root.querySelectorAll('[data-tipo]').forEach(b => b.addEventListener('click', () => { PF.tipo = b.dataset.tipo; root.querySelectorAll('[data-tipo]').forEach(x => x.classList.toggle('active', x === b)); draw(); }));
+  root.querySelector('[data-clear]').addEventListener('click', () => { Object.assign(PF, { cat: '', etapa: '', nat: '', tipo: '' }); location.hash = '#/pagamentos?r=' + Date.now(); });
   root.querySelectorAll('[data-sit]').forEach(b => b.addEventListener('click', () => { PF.sit = b.dataset.sit; root.querySelectorAll('[data-sit]').forEach(x => x.classList.toggle('active', x === b)); draw(); }));
   root.querySelectorAll('[data-per]').forEach(b => b.addEventListener('click', () => {
     PF.per = b.dataset.per; root.querySelectorAll('[data-per]').forEach(x => x.classList.toggle('active', x === b));

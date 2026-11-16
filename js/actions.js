@@ -70,6 +70,37 @@ export async function paymentSheet(itemId, situacao = 'Realizado') {
   });
 }
 
+/** Corrigir pagamento (valor, data, forma, descrição, parcela). */
+export async function editPaymentSheet(payment) {
+  const real = payment.situacao === 'Realizado';
+  const dataAtual = real ? (payment.dataPago || payment.data) : payment.data;
+  sheet('Corrigir pagamento', `
+    <p class="small muted" style="margin-top:-6px">${real ? 'Pagamento realizado' : 'Pagamento programado'} · as alterações ficam registradas no histórico.</p>
+    <div class="grid2">
+      <label class="field"><span>Valor <em>*</em></span><input class="input money num" name="valor" inputmode="decimal" value="${moneyPlain(payment.valor)}"></label>
+      <label class="field"><span>${real ? 'Data do pagamento' : 'Vencimento'} <em>*</em></span><input class="input" type="date" name="data" value="${dataAtual}"></label>
+    </div>
+    <div class="grid2">
+      <label class="field"><span>Forma</span><select class="input" name="forma">${formaOptions(payment.forma)}</select></label>
+      <label class="field"><span>Parcela (nº / de)</span><div class="grid2" style="gap:6px"><input class="input" name="parcela" inputmode="numeric" value="${payment.parcela || ''}"><input class="input" name="totalParcelas" inputmode="numeric" value="${payment.totalParcelas || ''}"></div></label>
+    </div>
+    <label class="field"><span>Descrição</span><input class="input" name="descricao" value="${esc(payment.descricao || '')}" autocomplete="off"></label>
+    <label class="field"><span>Motivo da correção (opcional)</span><input class="input" name="motivo" placeholder="ex.: data digitada errada" autocomplete="off"></label>
+    <div class="sheet-actions"><button class="btn ghost" data-close>Cancelar</button><button class="btn primary" data-ok>Salvar correção</button></div>`,
+  (el, close) => {
+    el.querySelector('[data-ok]').addEventListener('click', async () => {
+      const valor = readMoney(el, 'valor');
+      if (!(valor > 0)) return;
+      const f = (n) => el.querySelector(`[name=${n}]`).value;
+      try {
+        const r = await S.editPayment(payment.id, { valor, data: f('data'), forma: f('forma'), descricao: f('descricao').trim(),
+          parcela: parseInt(f('parcela')) || null, totalParcelas: parseInt(f('totalParcelas')) || null }, f('motivo').trim());
+        close(); toast(r === payment ? 'Nenhuma alteração.' : 'Pagamento corrigido.'); refresh();
+      } catch (e) { handleError(e); }
+    });
+  });
+}
+
 /** "Marcar como pago" — data e valor editáveis; se pagar a menos, pergunta o destino do restante. */
 export async function markPaidSheet(payment, itemDesc = '') {
   sheet('Marcar como pago', `

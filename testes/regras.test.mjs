@@ -227,6 +227,34 @@ await test('D4 – Restante como desconto de quitação', async () => {
   assert.equal(adj[0].tipo, 'Desconto de quitação');
 });
 
+await test('E1 – Corrigir data e valor de pagamento realizado (com histórico)', async () => {
+  const it = await S.createItem({ ...base, descricao: 'Porta', valorOriginal: R(1000) });
+  const p = await S.addPayment(it.id, { valor: R(400), situacao: 'Realizado', data: '2026-11-01' });
+  await S.editPayment(p.id, { data: '2026-10-01', valor: R(450) }, 'digitação');
+  const b = await tot(it.id);
+  const np = b.pays.find(x => x.id === p.id);
+  assert.deepEqual([np.dataPago, np.data, b.totals.pago], ['2026-10-01', '2026-10-01', R(450)]);
+  const h = b.history.filter(x => x.acao === 'Pagamento corrigido');
+  assert.equal(h.length, 2);
+  assert.ok(h.every(x => x.motivo === 'digitação'));
+});
+await test('E2 – Correção não pode passar do saldo do item', async () => {
+  const it = await S.createItem({ ...base, descricao: 'Janela', valorOriginal: R(1000) });
+  const p1 = await S.addPayment(it.id, { valor: R(600), situacao: 'Realizado', data: '2026-11-01' });
+  await S.addPayment(it.id, { valor: R(300), situacao: 'Programado', data: '2026-12-01' });
+  await expectBlocked(() => S.editPayment(p1.id, { valor: R(800) }));
+  await S.editPayment(p1.id, { valor: R(700) }); // 700 + 300 = 1000: permitido
+  assert.equal((await tot(it.id)).totals.pago, R(700));
+});
+await test('E3 – Corrigir vencimento de programado; cancelado não edita', async () => {
+  const it = await S.createItem({ ...base, descricao: 'Pia', valorOriginal: R(500) });
+  const p = await S.addPayment(it.id, { valor: R(500), situacao: 'Programado', data: '2026-12-10' });
+  await S.editPayment(p.id, { data: '2026-12-20' });
+  assert.equal((await tot(it.id)).pays[0].data, '2026-12-20');
+  await S.cancelPayment(p.id, 'x');
+  await expectBlocked(() => S.editPayment(p.id, { data: '2026-12-21' }));
+});
+
 for (const [s, n] of results) console.log(s, n);
 const fails = results.filter(r => r[0] === 'FALHA').length;
 console.log(`\n${results.length - fails}/${results.length} aprovados`);
