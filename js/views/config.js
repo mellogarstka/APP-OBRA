@@ -2,8 +2,10 @@ import * as S from '../store.js';
 import { money, dateTimeBR, todayISO } from '../fmt.js';
 import { esc, icon, sheet, toast, confirmSheet } from '../ui.js';
 import { handleError, refresh } from '../actions.js';
+import * as Sync from '../sync.js';
 
 const MENU = [
+  ['nuvem', 'Sincronização (celular + computador)', 'Conta, status da nuvem'],
   ['obra', 'Dados da obra', 'Nome, proprietário, endereço'],
   ['categorias', 'Categorias e subcategorias', 'Criar, renomear, desativar'],
   ['etapas', 'Etapas da obra', 'Criar, renomear, desativar'],
@@ -24,11 +26,94 @@ export async function renderConfig(root, ctx, sec) {
     root.innerHTML = `<div class="list">${MENU.map(([k, t, d]) => `<a class="li" href="#/config/${k}"><div class="grow"><div class="title">${t}</div><div class="meta">${d}</div></div>${icon('chev')}</a>`).join('')}</div>
       <p class="tiny muted" style="margin:14px 4px;line-height:1.6">
         Armazenamento: ${persist ? '<b style="color:var(--ok)">persistente</b> (o navegador não apagará os dados automaticamente)' : '<b style="color:var(--accent)">não persistente</b> — instale o app na tela inicial e mantenha backups'}${est ? ` · uso ${(est.usage / 1048576).toFixed(1)} MB` : ''}<br>
-        Dados guardados somente neste aparelho. Versão do esquema: ${S.SCHEMA}.</p>`;
+        ${Sync.currentUser() ? `Dados neste aparelho e na nuvem (${esc(Sync.currentUser().email)}).` : 'Dados guardados somente neste aparelho.'} Versão do esquema: ${S.SCHEMA}.</p>`;
     return;
   }
-  const fn = { obra, categorias, etapas, fornecedores, avisos, backup, historico, instalar }[sec];
+  const fn = { nuvem, obra, categorias, etapas, fornecedores, avisos, backup, historico, instalar }[sec];
   if (fn) await fn(root, ctx); else root.innerHTML = '<div class="empty">Seção não encontrada.</div>';
+}
+
+// ---------------------------------------------------------- nuvem
+const fmtTs = (iso) => iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'nunca';
+const ST_TXT = { off: 'Desativada', signedout: 'Não conectado', idle: 'Sincronizado', syncing: 'Sincronizando…', offline: 'Sem internet', error: 'Erro', conflict: 'Ação necessária' };
+
+async function nuvem(root) {
+  const st = Sync.state;
+  if (!Sync.configured()) {
+    root.innerHTML = `<div class="card"><p>A sincronização ainda não foi configurada nesta versão do app.</p><p class="small muted">Os dados ficam somente neste aparelho. Use o backup para levá-los a outro.</p></div>`;
+    return;
+  }
+  const u = Sync.currentUser();
+  if (st.status === 'conflict' && st.conflito) {
+    root.innerHTML = `<div class="card">
+      <h3 style="margin-top:0">Dados nos dois lugares</h3>
+      <p class="small">A nuvem já tem dados desta conta e este aparelho também tem lançamentos (${st.conflito.local} item(ns)). Escolha o que fazer:</p>
+      <label class="opt"><input type="radio" name="m" value="nuvem" checked><div><b>Usar os dados da nuvem</b><small>Substitui os dados deste aparelho pelos da nuvem. Um backup deste aparelho é baixado antes.</small></div></label>
+      <label class="opt"><input type="radio" name="m" value="juntar"><div><b>Juntar os dois</b><small>Envia os lançamentos deste aparelho para a nuvem. Categorias e etapas podem aparecer repetidas.</small></div></label>
+      <button class="btn primary block" data-ok style="margin-top:12px">Continuar</button></div>`;
+    root.querySelector('[data-ok]').addEventListener('click', async (e) => {
+      const modo = root.querySelector('[name=m]:checked').value;
+      e.target.disabled = true;
+      try {
+        if (modo === 'nuvem') await shareOrDownload(await S.exportBackup(), `backup-aparelho-${todayISO()}.json`);
+        await Sync.resolveConflict(modo); toast('Dados sincronizados.');
+      } catch (err) { toast(err.message, true); e.target.disabled = false; }
+    });
+    return;
+  }
+  if (!u) {
+    root.innerHTML = `<form class="card" data-f autocomplete="on">
+      <p class="small" style="margin-top:0">Entre com a mesma conta no celular e no computador para ver os mesmos dados.</p>
+      <label class="field"><span>E-mail</span><input class="input" type="email" name="email" autocomplete="username" required></label>
+      <label class="field"><span>Senha</span><input class="input" type="password" name="senha" autocomplete="current-password" minlength="6" required></label>
+      <button class="btn primary block" data-act="entrar">Entrar</button>
+      <div class="grid2" style="margin-top:10px">
+        <button class="btn ghost block" type="button" data-act="criar">Criar conta</button>
+        <button class="btn ghost block" type="button" data-act="esqueci">Esqueci a senha</button>
+      </div></form>
+      <p class="tiny muted" style="margin:10px 4px">No primeiro acesso, os dados deste aparelho são enviados para a nuvem. No segundo aparelho, eles são baixados automaticamente.</p>`;
+    const f = root.querySelector('[data-f]');
+    const val = (n) => f.querySelector(`[name=${n}]`).value;
+    const run = async (act) => {
+      try {
+        if (!val('email')) return toast('Informe o e-mail.', true);
+        if (act === 'esqueci') { await Sync.resetPassword(val('email')); return toast('Enviamos um link de redefinição para o seu e-mail.'); }
+        if (val('senha').length < 6) return toast('A senha precisa ter pelo menos 6 caracteres.', true);
+        if (act === 'criar') {
+          const r = await Sync.signUp(val('email'), val('senha'));
+          toast(r.precisaConfirmar ? 'Conta criada. Confirme pelo link enviado ao seu e-mail e depois entre.' : 'Conta criada.');
+        } else { await Sync.signIn(val('email'), val('senha')); toast('Conectado.'); }
+      } catch (err) { toast(err.message, true); }
+    };
+    f.addEventListener('submit', (e) => { e.preventDefault(); run('entrar'); });
+    f.querySelectorAll('[type=button][data-act]').forEach(b => b.addEventListener('click', () => run(b.dataset.act)));
+    return;
+  }
+  root.innerHTML = `<div class="card">
+      <div class="sync-status" data-st="${st.status}"><i class="dot"></i>${ST_TXT[st.status] || st.status}</div>
+      ${st.error ? `<div class="banner danger" style="margin-top:10px">${esc(st.error)}</div>` : ''}
+      <p class="small" style="margin-bottom:4px">Conta: <b>${esc(u.email)}</b></p>
+      <p class="small muted" style="margin:0">Última sincronização: ${fmtTs(st.lastSync)}<br>Alterações aguardando envio: ${st.pendentes}</p>
+      <button class="btn primary block" data-sync style="margin-top:14px" ${st.status === 'syncing' ? 'disabled' : ''}>Sincronizar agora</button>
+    </div>
+    <div class="list" style="margin-top:14px">
+      <button class="li" data-senha><div class="grow"><div class="title">Trocar senha</div></div>${icon('chev')}</button>
+      <button class="li" data-sair><div class="grow"><div class="title" style="color:var(--danger)">Sair da conta neste aparelho</div><div class="meta">Os dados continuam no aparelho, mas param de sincronizar.</div></div></button>
+    </div>
+    <p class="tiny muted" style="margin:10px 4px">Sem internet o app funciona normalmente; as alterações ficam guardadas e sobem sozinhas quando a conexão voltar.</p>`;
+  root.querySelector('[data-sync]').addEventListener('click', () => Sync.syncNow().then(() => toast('Sincronizado.')).catch(e => toast(e.message, true)));
+  root.querySelector('[data-sair]').addEventListener('click', async () => {
+    const r = await confirmSheet({ title: 'Sair da conta', text: 'Este aparelho deixará de sincronizar. Nenhum dado é apagado.', confirmLabel: 'Sair', askReason: false });
+    if (r) { await Sync.signOut(); toast('Desconectado.'); }
+  });
+  root.querySelector('[data-senha]').addEventListener('click', () => {
+    sheet('Trocar senha', `<label class="field"><span>Nova senha (mín. 6)</span><input class="input" type="password" name="s" autocomplete="new-password"></label>
+      <div class="sheet-actions"><button class="btn ghost" data-close>Cancelar</button><button class="btn primary" data-ok>Salvar</button></div>`, (el, close) => {
+      el.querySelector('[data-ok]').addEventListener('click', async () => {
+        try { await Sync.updatePassword(el.querySelector('[name=s]').value); close(); toast('Senha alterada.'); } catch (e) { toast(e.message, true); }
+      });
+    });
+  });
 }
 
 // ---------------------------------------------------------- obra

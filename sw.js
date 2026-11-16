@@ -1,7 +1,7 @@
 // Service Worker — cache completo do app para funcionamento 100% offline.
 // Ao publicar uma nova versão, altere VERSION: o cache antigo é descartado,
 // mas os DADOS (IndexedDB) nunca são tocados pelo Service Worker.
-const VERSION = 'obra-v1.1.0';
+const VERSION = 'obra-v1.2.0';
 const ASSETS = [
   './',
   'css/app.css',
@@ -13,11 +13,14 @@ const ASSETS = [
   'js/actions.js',
   'js/app.js',
   'js/calc.js',
+  'js/config.js',
   'js/db.js',
   'js/fmt.js',
   'js/seed.js',
   'js/store.js',
+  'js/sync.js',
   'js/ui.js',
+  'js/vendor/supabase-2.119.0.js',
   'js/views/config.js',
   'js/views/home.js',
   'js/views/item.js',

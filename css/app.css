@@ -319,3 +319,17 @@ details.more > .inner { padding: 0 16px 4px; }
   .sheet { border-radius: 20px; margin-bottom: 24px; }
   .sheet-backdrop { align-items: center; }
 }
+
+/* Sincronização */
+.cloud-btn { position: relative; }
+.cloud-btn .dot { position: absolute; right: 8px; bottom: 9px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--brand); background: #9aa39d; }
+.cloud-btn[data-st="idle"] .dot { background: #4cc27f; }
+.cloud-btn[data-st="syncing"] .dot { background: #f2c14e; animation: pulse 1s infinite alternate; }
+.cloud-btn[data-st="error"] .dot, .cloud-btn[data-st="conflict"] .dot { background: #ff6b5e; }
+.cloud-btn[data-st="offline"] .dot, .cloud-btn[data-st="signedout"] .dot { background: #c9cfcb; }
+@keyframes pulse { to { opacity: .35; } }
+.sync-status { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.sync-status .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; background: #9aa39d; }
+.sync-status[data-st="idle"] .dot { background: var(--ok); }
+.sync-status[data-st="syncing"] .dot { background: #e0a82e; }
+.sync-status[data-st="error"] .dot, .sync-status[data-st="conflict"] .dot { background: var(--danger); }

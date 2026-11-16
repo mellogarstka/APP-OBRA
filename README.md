@@ -1,9 +1,9 @@
-# Controle Financeiro da Obra — PWA (v1.1 · Fases 1 e 2-núcleo)
+# Controle Financeiro da Obra — PWA (v1.2 · Fases 1 e 2-núcleo + sincronização)
 
 Endereço publicado: https://mellogarstka.github.io/APP-OBRA/
 
-Aplicativo local-first: todos os dados ficam no celular (IndexedDB), funciona 100% offline
-e não usa servidor, login nem serviços externos.
+Aplicativo local-first: os dados ficam no aparelho (IndexedDB) e o app funciona 100% offline.
+Com login (e-mail e senha), os dados são espelhados no Supabase e sincronizados entre celular e computador.
 
 ## O que está pronto
 - **Fase 1:** modelo de dados (valores em centavos, datas ISO), novo lançamento com as 5 formas
@@ -17,6 +17,17 @@ e não usa servidor, login nem serviços externos.
 - **Adiantado da Fase 3:** relatórios em tela (categoria, etapa, tipo com separação material/MO,
   natureza, fornecedor, por mês com as duas visões, compromissos futuros, aditivos, parcelados)
   e avisos no app (badge + destaque, antecedência configurável).
+
+## Sincronização (v1.2)
+- Projeto Supabase `APP-OBRA` (ref `dwsogzjdnfklocwlaqnf`). Estrutura do banco: `supabase/schema.sql`
+  (tabela `public.registros`, RLS por usuário, `updated_at` pelo relógio do servidor, sem DELETE).
+- `js/config.js` guarda a URL e a chave **pública** (publishable). Nunca colocar a chave secreta.
+- Fila local `outbox` (IndexedDB v2): toda gravação entra na fila na mesma transação; sobe quando há
+  internet. Download por cursor `updated_at`. Conflito: vence a última gravação enviada; alteração
+  local pendente nunca é sobrescrita. Configurações sincronizadas: `obra` e `avisoDias`.
+- 1º acesso de um aparelho: nuvem vazia → envia; aparelho sem lançamentos → baixa; ambos com
+  dados → o app pergunta (usar nuvem, com backup antes, ou juntar).
+- Biblioteca `js/vendor/supabase-2.119.0.js` (versão fixa, guardada no app para funcionar offline).
 
 ## Novidades da v1.1
 - Aditivo, redução e desconto em **serviço misto**: campos de material e mão de obra

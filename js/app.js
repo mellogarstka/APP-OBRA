@@ -8,10 +8,11 @@ import { renderItem } from './views/item.js';
 import { renderItens, renderPagamentos } from './views/lists.js';
 import { renderReports } from './views/reports.js';
 import { renderConfig } from './views/config.js';
+import * as Sync from './sync.js';
 
 let lastTab = 'inicio'; // aba de origem: a tela do item mantém destacada a aba de onde veio
 const NAV = [['inicio', 'Início', 'home'], ['itens', 'Itens', 'list'], ['pagamentos', 'Pagamentos', 'pay'], ['relatorios', 'Relatórios', 'chart'], ['config', 'Configurações', 'gear']];
-const CONFIG_TITLES = { obra: 'Dados da obra', categorias: 'Categorias', etapas: 'Etapas', fornecedores: 'Fornecedores', avisos: 'Avisos', backup: 'Backup', historico: 'Histórico geral', instalar: 'Instalar' };
+const CONFIG_TITLES = { nuvem: 'Sincronização', obra: 'Dados da obra', categorias: 'Categorias', etapas: 'Etapas', fornecedores: 'Fornecedores', avisos: 'Avisos', backup: 'Backup', historico: 'Histórico geral', instalar: 'Instalar' };
 
 async function buildCtx() {
   const data = await S.loadAll();
@@ -34,7 +35,7 @@ function parseHash() {
 
 function shell() {
   document.body.innerHTML = `
-    <header class="topbar"><button class="icon-btn hidden" data-back aria-label="Voltar">${icon('back')}</button><h1 data-title></h1></header>
+    <header class="topbar"><button class="icon-btn hidden" data-back aria-label="Voltar">${icon('back')}</button><h1 data-title></h1><a class="icon-btn cloud-btn hidden" data-cloud href="#/config/nuvem" aria-label="Sincronização">${icon('cloud')}<i class="dot"></i></a></header>
     <main id="view"></main>
     <button class="fab" data-fab aria-label="Novo lançamento" title="Novo lançamento">${icon('plus')}<span class="fab-label">NOVO LANÇAMENTO</span></button>
     <nav class="bottom-nav">${NAV.map(([k, l, i]) => `<a href="#/${k}" data-nav="${k}">${icon(i)}<span>${l}</span>${k === 'inicio' ? '<b class="nav-badge hidden" data-badge></b>' : ''}</a>`).join('')}</nav>`;
@@ -115,6 +116,17 @@ async function start() {
   lastRoute = location.hash;
   await queueRender(false);
   maybeNotify(await buildCtx());
+
+  // Sincronização com a nuvem (só ativa se js/config.js estiver preenchido)
+  let ultimoStatus = null;
+  Sync.subscribe((st) => {
+    const b = document.querySelector('[data-cloud]');
+    if (b) { b.classList.toggle('hidden', !Sync.configured()); b.dataset.st = st.status; b.title = statusLabel(st); }
+    if (st.status === 'conflict' && ultimoStatus !== 'conflict' && !location.hash.startsWith('#/config/nuvem')) location.hash = '#/config/nuvem';
+    if (location.hash.startsWith('#/config/nuvem') && st.status !== ultimoStatus) queueRender(true);
+    ultimoStatus = st.status;
+  });
+  Sync.initSync(() => queueRender(true)).catch(console.error);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') queueRender(true); });
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
@@ -125,6 +137,11 @@ async function start() {
       });
     }).catch(() => {});
   }
+}
+
+export function statusLabel(st) {
+  return ({ off: 'Sincronização desativada', signedout: 'Não conectado à nuvem', idle: 'Sincronizado', syncing: 'Sincronizando…',
+    offline: 'Sem internet — alterações ficam guardadas e sobem depois', error: 'Erro na sincronização', conflict: 'Escolha como juntar os dados' })[st.status] || st.status;
 }
 
 start();
