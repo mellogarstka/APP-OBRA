@@ -25,9 +25,9 @@ function barRows(entries, nameFn, hrefFn, total) {
     const pPago = total ? (x.pago / total) * 100 : 0;
     const pOpen = total ? (Math.max(0, x.atualizado - x.pago) / total) * 100 : 0;
     return `<a class="rep-row" ${hrefFn ? `href="${hrefFn(k)}"` : ''}>
-      <div class="top"><span class="ellipsis">${esc(nameFn(k))}</span><b class="num">${money(x.atualizado)}</b></div>
+      <div class="top"><span class="clamp2">${esc(nameFn(k))}</span><b class="num">${money(x.atualizado)}</b></div>
       <div class="bar"><span class="paid" style="width:${pPago}%"></span><span class="open" style="width:${pOpen}%"></span></div>
-      <div class="sub"><span>${x.n} item(ns) · ${(total ? (x.atualizado / total) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span><span class="num">pago ${money(x.pago)} · falta ${money(x.pendente)}</span></div>
+      <div class="sub"><span>${x.n} ${x.n === 1 ? 'item' : 'itens'} · ${(total ? (x.atualizado / total) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% do total</span><span class="num pf">pago ${money(x.pago)} · falta ${money(x.pendente)}</span></div>
     </a>`;
   }).join('');
 }
@@ -70,12 +70,12 @@ export async function renderReports(root, ctx, tab = 'categoria') {
     const ups = rows.filter(r => r.item.natureza === 'Upgrade');
     body = legend + `<div class="list">${barRows(g, k => k, k => `#/itens?nat=${k}`, total)}</div>
       <div class="section-title">Upgrades — referência × valor final</div>
-      <div class="list">${ups.length ? ups.map(r => `<a class="li" href="#/item/${r.item.id}"><div class="grow"><div class="title ellipsis">${esc(r.item.descricao)}</div>
+      <div class="list">${ups.length ? ups.map(r => `<a class="li" href="#/item/${r.item.id}"><div class="grow"><div class="title clamp2">${esc(r.item.descricao)}</div>
         <div class="meta num">Ref. ${Number.isInteger(r.item.valorReferencia) ? money(r.item.valorReferencia) : '—'} → final ${money(r.totals.atualizado)}</div></div>
         <div class="amount num">${Number.isInteger(r.item.valorReferencia) ? '+' + money(r.totals.diffUpgrade) : '—'}</div></a>`).join('')
         + `<div class="li"><div class="grow title">Total da diferença</div><div class="amount num">${money(ups.reduce((s, r) => s + r.totals.diffUpgrade, 0))}</div></div>` : '<div class="empty">Nenhum upgrade.</div>'}</div>
       <div class="section-title">Retrabalho e imprevistos</div>
-      <div class="list">${rows.filter(r => ['Retrabalho', 'Imprevisto'].includes(r.item.natureza)).map(r => `<a class="li" href="#/item/${r.item.id}"><div class="grow"><div class="title ellipsis">${esc(r.item.descricao)}</div><div class="meta">${r.item.natureza} · ${esc(r.item.tipo)} · ${dateBR(r.item.dataCompra)}</div></div><div class="amount num">${money(r.totals.atualizado)}</div></a>`).join('') || '<div class="empty">Nenhum registro.</div>'}</div>`;
+      <div class="list">${rows.filter(r => ['Retrabalho', 'Imprevisto'].includes(r.item.natureza)).map(r => `<a class="li" href="#/item/${r.item.id}"><div class="grow"><div class="title clamp2">${esc(r.item.descricao)}</div><div class="meta">${r.item.natureza} · ${esc(r.item.tipo)} · ${dateBR(r.item.dataCompra)}</div></div><div class="amount num">${money(r.totals.atualizado)}</div></a>`).join('') || '<div class="empty">Nenhum registro.</div>'}</div>`;
   }
 
   if (tab === 'mes') {
@@ -116,7 +116,7 @@ export async function renderReports(root, ctx, tab = 'categoria') {
         <div class="kpi"><div class="label">Descontos de quitação</div><div class="value num">− ${money(s('Desconto de quitação'))}</div></div>
         <div class="kpi"><div class="label">Aditivos líquidos</div><div class="value num">${money(s('Aditivo') - s('Redução'))}</div></div></div>
       <div class="section-title">Lançamentos</div>
-      <div class="list">${adj.length ? adj.map(a => `<a class="li ${a.status === 'Cancelado' ? 'strike' : ''}" href="#/item/${a.itemId}"><div class="grow"><div class="title ellipsis">${esc(ativos.get(a.itemId).descricao)} — ${esc(a.descricao)}</div><div class="meta">${a.tipo} · ${dateBR(a.data)}${a.status === 'Cancelado' ? ' · cancelado' : ''}</div></div><div class="amount num">${a.tipo === 'Aditivo' ? '+' : '−'} ${money(a.valor)}</div></a>`).join('') : '<div class="empty">Nenhum ajuste.</div>'}</div>`;
+      <div class="list">${adj.length ? adj.map(a => `<a class="li ${a.status === 'Cancelado' ? 'strike' : ''}" href="#/item/${a.itemId}"><div class="grow"><div class="title clamp2">${esc(ativos.get(a.itemId).descricao)} — ${esc(a.descricao)}</div><div class="meta">${a.tipo} · ${dateBR(a.data)}${a.status === 'Cancelado' ? ' · cancelado' : ''}</div></div><div class="amount num">${a.tipo === 'Aditivo' ? '+' : '−'} ${money(a.valor)}</div></a>`).join('') : '<div class="empty">Nenhum ajuste.</div>'}</div>`;
   }
 
   if (tab === 'cartao') {
@@ -125,14 +125,14 @@ export async function renderReports(root, ctx, tab = 'categoria') {
       const ps = r.pays.filter(p => p.situacao !== 'Cancelado' && p.totalParcelas);
       const pagas = ps.filter(p => p.situacao === 'Realizado');
       const prox = ps.filter(p => p.situacao === 'Programado').sort((a, b) => a.data.localeCompare(b.data))[0];
-      return `<a class="li" href="#/item/${r.item.id}"><div class="grow"><div class="title ellipsis">${esc(r.item.descricao)}</div>
+      return `<a class="li" href="#/item/${r.item.id}"><div class="grow"><div class="title clamp2">${esc(r.item.descricao)}</div>
         <div class="meta">${esc(r.item.formaPagamento || '')}${r.item.cartao ? ' · ' + esc(r.item.cartao) : ''} · ${pagas.length}/${ps.length} pagas${prox ? ` · próxima ${dateBR(prox.data)}` : ''}</div></div>
         <div class="amount num">${money(r.totals.programado)}<div class="meta">a vencer</div></div></a>`;
     }).join('') : '<div class="empty">Nenhuma compra parcelada.</div>'}</div>`;
   }
 
   root.innerHTML = `
-    <div class="tabs">${TABS.map(([k, l]) => `<a class="tab ${k === tab ? 'active' : ''}" href="#/relatorios/${k}" style="text-decoration:none">${l}</a>`).join('')}</div>
+    <div class="tabs wrap">${TABS.map(([k, l]) => `<a class="tab ${k === tab ? 'active' : ''}" href="#/relatorios/${k}" style="text-decoration:none">${l}</a>`).join('')}</div>
     <div class="row between small" style="margin:0 4px 10px"><span class="muted">Custo total considerado</span><b class="num">${money(total)}</b></div>
     ${body}
     <p class="tiny muted" style="margin:16px 4px">Geração de PDF e exportação para Excel: próxima fase.</p>`;

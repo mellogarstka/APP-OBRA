@@ -152,6 +152,10 @@ main#view { padding: 16px 16px calc(var(--nav-h) + var(--safe-b) + 96px); max-wi
 /* Abas */
 .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 10px; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
+/* Abas que quebram linha (todas visíveis, sem rolagem lateral) — relatórios e telas largas */
+.tabs.wrap { flex-wrap: wrap; overflow: visible; }
+.tabs.wrap .tab { padding: 7px 12px; font-size: .8rem; }
+@media (min-width: 760px) { .tabs { flex-wrap: wrap; overflow: visible; } }
 .tab {
   flex: none; min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--line);
   background: var(--surface); color: var(--ink-2); font-weight: 600; font-size: .85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
@@ -269,7 +273,10 @@ details.more > .inner { padding: 0 16px 4px; }
 .rep-row .bar span { display: block; height: 100%; }
 .rep-row .bar .paid { background: var(--brand); }
 .rep-row .bar .open { background: #9cc5b5; }
-.rep-row .sub { font-size: .75rem; color: var(--ink-3); margin-top: 5px; display: flex; justify-content: space-between; }
+.rep-row .sub { font-size: .75rem; color: var(--ink-3); margin-top: 5px; display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.rep-row .sub span { white-space: nowrap; }
+.rep-row .sub .pf { margin-left: auto; }
+.rep-row .top span { min-width: 0; }
 .legend { display: flex; gap: 14px; font-size: .75rem; color: var(--ink-3); margin: 0 4px 8px; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 
