@@ -1,6 +1,49 @@
 import { money, dateBR, monthLabel } from '../fmt.js';
 import { splitMaterialMO, TIPOS, NATUREZAS } from '../calc.js';
-import { esc } from '../ui.js';
+import { esc, icon, sheet, toast } from '../ui.js';
+import { todayISO } from '../fmt.js';
+import { gerarPDF, entregarPDF, TIPOS_RELATORIO } from '../pdf.js';
+
+const PDFF = { tipo: 'resumo', f: { tipo: '', etapa: '', cat: '', de: '', ate: '' } };
+
+function pdfSheet(ctx) {
+  const cats = ctx.categories.filter(c => !c.parentId && c.ativo !== false).sort((a, b) => a.ordem - b.ordem);
+  const sel = (name, label, opts) => `<label class="field"><span>${label}</span><select class="input" name="${name}"><option value="">Todos</option>${opts.map(([v, l]) => `<option value="${esc(v)}" ${PDFF.f[name] === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
+  sheet('Gerar relatório em PDF', `
+    ${TIPOS_RELATORIO.map(([k, l, d]) => `<label class="opt ${PDFF.tipo === k ? 'on' : ''}"><input type="radio" name="rel" value="${k}" ${PDFF.tipo === k ? 'checked' : ''}><div><b>${l}</b><small>${d}</small></div></label>`).join('')}
+    <div data-filtros class="${PDFF.tipo === 'resumo' ? 'hidden' : ''}" style="margin-top:6px">
+      <div class="grid2">${sel('tipo', 'Tipo de custo', TIPOS.map(t => [t, t]))}${sel('etapa', 'Etapa', [...ctx.stages].sort((a, b) => a.ordem - b.ordem).map(x => [x.id, x.nome]))}</div>
+      ${sel('cat', 'Categoria', cats.map(c => [c.id, c.nome]))}
+      <div class="grid2">
+        <label class="field"><span data-de-label>De</span><input class="input" type="date" name="de" value="${PDFF.f.de}" max="${todayISO()}"></label>
+        <label class="field"><span>Até</span><input class="input" type="date" name="ate" value="${PDFF.f.ate}"></label>
+      </div>
+      <p class="tiny muted" data-per-hint style="margin:-4px 2px 8px"></p>
+    </div>
+    <div class="sheet-actions"><button class="btn ghost" data-close>Cancelar</button><button class="btn primary" data-ok>${icon('doc')} Gerar PDF</button></div>`,
+  (el, close) => {
+    const hint = () => {
+      const t = el.querySelector('[name=rel]:checked').value;
+      el.querySelector('[data-filtros]').classList.toggle('hidden', t === 'resumo');
+      el.querySelector('[data-per-hint]').textContent = t === 'pagamentos' ? 'Período pela data em que o pagamento foi feito.' : 'Período pela data da compra/contratação do item.';
+      el.querySelectorAll('.opt').forEach(o => o.classList.toggle('on', o.querySelector('input').checked));
+    };
+    el.querySelectorAll('[name=rel]').forEach(r => r.addEventListener('change', hint)); hint();
+    el.querySelector('[data-ok]').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      PDFF.tipo = el.querySelector('[name=rel]:checked').value;
+      for (const k of Object.keys(PDFF.f)) PDFF.f[k] = el.querySelector(`[name=${k}]`).value;
+      if (PDFF.f.de && PDFF.f.ate && PDFF.f.de > PDFF.f.ate) return toast('A data inicial é maior que a final.', true);
+      btn.disabled = true; btn.textContent = 'Gerando…';
+      try {
+        const r = await gerarPDF(ctx, { tipo: PDFF.tipo, f: PDFF.tipo === 'resumo' ? {} : { ...PDFF.f } });
+        const como = await entregarPDF(r);
+        close();
+        if (como !== 'cancelado') toast(`PDF gerado (${r.paginas} página${r.paginas > 1 ? 's' : ''}).`);
+      } catch (err) { toast(err.message || 'Falha ao gerar o PDF.', true); btn.disabled = false; btn.textContent = 'Gerar PDF'; }
+    });
+  });
+}
 
 const TABS = [
   ['categoria', 'Categoria'], ['etapa', 'Etapa'], ['tipo', 'Tipo de custo'], ['natureza', 'Natureza'], ['fornecedor', 'Fornecedor'],
@@ -38,7 +81,7 @@ export async function renderReports(root, ctx, tab = 'categoria') {
   if (!TABS.some(t => t[0] === tab)) tab = 'categoria';
 
   let body = '';
-  const legend = `<div class="legend"><span><i style="background:var(--brand)"></i>Pago</span><span><i style="background:#9cc5b5"></i>A pagar</span></div>`;
+  const legend = `<div class="legend"><span><i style="background:var(--brand)"></i>Pago</span><span><i style="background:var(--bar-open)"></i>A pagar</span></div>`;
 
   if (tab === 'categoria') {
     const g = groupRows(rows, r => r.item.categoriaId);
@@ -136,10 +179,14 @@ export async function renderReports(root, ctx, tab = 'categoria') {
   }
 
   root.innerHTML = `
+    <div class="pdf-cta card">
+      <div><b>Relatório em PDF</b><div class="small muted">Resumo da obra, itens detalhados ou extrato de pagamentos, pronto para salvar, imprimir ou enviar.</div></div>
+      <button class="btn primary" data-pdf>${icon('doc')} Gerar PDF</button>
+    </div>
     <div class="tabs wrap">${TABS.map(([k, l]) => `<a class="tab ${k === tab ? 'active' : ''}" href="#/relatorios/${k}" style="text-decoration:none">${l}</a>`).join('')}</div>
     <div class="row between small" style="margin:0 4px 10px"><span class="muted">Custo total considerado</span><b class="num">${money(total)}</b></div>
-    ${body}
-    <p class="tiny muted" style="margin:16px 4px">Geração de PDF e exportação para Excel: próxima fase.</p>`;
+    ${body}`;
 
+  root.querySelector('[data-pdf]').addEventListener('click', () => pdfSheet(ctx));
   root.querySelectorAll('[data-mv]').forEach(b => b.addEventListener('click', () => { mesVisao = b.dataset.mv; renderReports(root, ctx, 'mes'); }));
 }

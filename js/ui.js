@@ -13,6 +13,7 @@ const P = {
   back: '<path d="M15 18l-6-6 6-6"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  doc: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
   chev: '<path d="m9 18 6-6-6-6"/>',
   cloud: '<path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4.5 4.5 0 0 1-.5 9.5z"/>',
   x: '<path d="M18 6 6 18M6 6l12 12"/>',

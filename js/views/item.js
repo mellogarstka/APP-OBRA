@@ -84,9 +84,6 @@ export async function renderItem(root, ctx, id) {
         ${a.status !== 'Cancelado' && !cancelado ? `<button class="icon-btn" data-ca="${a.id}" title="Cancelar" style="color:var(--ink-3)">✕</button>` : ''}
       </div>`).join('') : '<div class="empty">Nenhum aditivo ou ajuste.</div>'}</div>
 
-    <div class="section-title">Anexos</div>
-    <div class="list"><div class="empty">Anexos (notas, recibos, fotos) chegam na próxima fase.</div></div>
-
     <div class="section-title">Histórico</div>
     <div class="list">${b.history.map(h => `
       <div class="hist"><div class="when">${dateTimeBR(h.ts)} · ${esc(h.entity)}</div>
