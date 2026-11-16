@@ -42,11 +42,12 @@ export async function renderReports(root, ctx, tab = 'categoria') {
 
   if (tab === 'categoria') {
     const g = groupRows(rows, r => r.item.categoriaId);
-    body = legend + `<div class="list">${barRows(g, ctx.catName, k => `#/itens?cat=${k}`, total)}</div>`;
+    body = legend + `<div class="rep-cols"><section><div class="list">${barRows(g, ctx.catName, k => `#/itens?cat=${k}`, total)}</div></section>`;
     const subs = groupRows(rows.filter(r => r.item.subcategoriaId), r => r.item.subcategoriaId);
-    if (subs.length) body += `<div class="section-title">Subcategorias</div><div class="list">${barRows(subs, k => {
+    if (subs.length) body += `<section><div class="section-title first-wide">Subcategorias</div><div class="list">${barRows(subs, k => {
       const c = ctx.catMap[k]; return c ? `${ctx.catName(c.parentId)} › ${c.nome}` : '—';
     }, k => `#/itens?sub=${k}`, total)}</div>`;
+    body += subs.length ? '</section></div>' : '</div>';
   }
   if (tab === 'etapa') body = legend + `<div class="list">${barRows(groupRows(rows, r => r.item.etapaId), ctx.stageName, k => `#/itens?etapa=${k}`, total)}</div>`;
   if (tab === 'fornecedor') body = legend + `<div class="list">${barRows(groupRows(rows, r => r.item.fornecedorId || ''), k => k ? ctx.supName(k) : 'Sem fornecedor', k => k ? `#/itens?forn=${k}` : null, total)}</div>`;

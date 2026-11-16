@@ -59,6 +59,8 @@ export async function renderHome(root, ctx) {
     ${!ag.hoje.length && proxAviso ? `<div class="banner warn"><span><b>${proxAviso}</b> pagamento(s) nos próximos ${avisoDias} dia(s)</span></div>` : ''}
     ${precisaBackup ? `<div class="banner warn"><span>${ub ? `Último backup há ${diasBk} dia(s)${desde ? ` · ${desde} lançamento(s) novos` : ''}.` : 'Você ainda não fez nenhum backup.'}</span><a class="btn sm accent" href="#/config/backup">Fazer backup</a></div>` : ''}
 
+    <div class="layout-2">
+    <section class="col-main">
     <div class="kpi-hero">
       <div class="label">Custo total da obra</div>
       <div class="value num">${money(t.custo)}</div>
@@ -77,11 +79,15 @@ export async function renderHome(root, ctx) {
       <a class="kpi" href="#/itens?nat=Imprevisto"><div class="label">Imprevistos</div><div class="value num">${money(t.imprevisto)}</div></a>
     </div>
 
+    </section>
+    <section class="col-side">
     <div class="section-title">Próximos pagamentos</div>
     <div class="tabs" role="tablist">
       ${tabs.map(([k, l, c, cls]) => `<button class="tab ${k === tabAtual ? 'active' : ''} ${c && cls ? cls : ''}" data-tab="${k}">${l}${c !== null ? ` <span class="count">${c}</span>` : ''}</button>`).join('')}
     </div>
     <div class="list" data-agenda></div>
+    </section>
+    </div>
   `;
 
   const box = root.querySelector('[data-agenda]');

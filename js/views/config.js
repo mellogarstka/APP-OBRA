@@ -23,7 +23,7 @@ export async function renderConfig(root, ctx, sec) {
   if (!sec) {
     const est = await navigator.storage?.estimate?.().catch(() => null);
     const persist = await navigator.storage?.persisted?.().catch(() => null);
-    root.innerHTML = `<div class="list">${MENU.map(([k, t, d]) => `<a class="li" href="#/config/${k}"><div class="grow"><div class="title">${t}</div><div class="meta">${d}</div></div>${icon('chev')}</a>`).join('')}</div>
+    root.innerHTML = `<div class="list grid-wide">${MENU.map(([k, t, d]) => `<a class="li" href="#/config/${k}"><div class="grow"><div class="title">${t}</div><div class="meta">${d}</div></div>${icon('chev')}</a>`).join('')}</div>
       <p class="tiny muted" style="margin:14px 4px;line-height:1.6">
         Armazenamento: ${persist ? '<b style="color:var(--ok)">persistente</b> (o navegador não apagará os dados automaticamente)' : '<b style="color:var(--accent)">não persistente</b> — instale o app na tela inicial e mantenha backups'}${est ? ` · uso ${(est.usage / 1048576).toFixed(1)} MB` : ''}<br>
         ${Sync.currentUser() ? `Dados neste aparelho e na nuvem (${esc(Sync.currentUser().email)}).` : 'Dados guardados somente neste aparelho.'} Versão do esquema: ${S.SCHEMA}.</p>`;

@@ -38,7 +38,7 @@ function shell() {
     <header class="topbar"><button class="icon-btn hidden" data-back aria-label="Voltar">${icon('back')}</button><h1 data-title></h1><a class="icon-btn cloud-btn hidden" data-cloud href="#/config/nuvem" aria-label="Sincronização">${icon('cloud')}<i class="dot"></i></a></header>
     <main id="view"></main>
     <button class="fab" data-fab aria-label="Novo lançamento" title="Novo lançamento">${icon('plus')}<span class="fab-label">NOVO LANÇAMENTO</span></button>
-    <nav class="bottom-nav">${NAV.map(([k, l, i]) => `<a href="#/${k}" data-nav="${k}">${icon(i)}<span>${l}</span>${k === 'inicio' ? '<b class="nav-badge hidden" data-badge></b>' : ''}</a>`).join('')}</nav>`;
+    <nav class="bottom-nav"><div class="rail-brand"><img src="icons/icon-192.png" alt="">Controle da Obra</div>${NAV.map(([k, l, i]) => `<a href="#/${k}" data-nav="${k}">${icon(i)}<span>${l}</span>${k === 'inicio' ? '<b class="nav-badge hidden" data-badge></b>' : ''}</a>`).join('')}</nav>`;
   document.querySelector('[data-fab]').addEventListener('click', () => { location.hash = '#/novo'; });
   document.querySelector('[data-back]').addEventListener('click', () => { history.length > 1 ? history.back() : (location.hash = '#/inicio'); });
 }

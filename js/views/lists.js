@@ -51,7 +51,7 @@ export async function renderItens(root, ctx, params) {
       </div><button class="btn ghost sm" data-clear style="margin-bottom:12px">Limpar filtros</button></div>
     </details>
     <div class="row between small muted" style="margin:0 4px 8px"><span data-count></span><span data-sum class="num"></span></div>
-    <div class="list" data-list></div>`;
+    <div class="list grid-wide" data-list></div>`;
 
   const draw = () => {
     const q = F.q.trim().toLocaleLowerCase('pt-BR');
@@ -79,7 +79,7 @@ export async function renderItens(root, ctx, params) {
       <a class="li ${r.status === 'Cancelado' ? 'strike' : ''}" href="#/item/${r.item.id}">
         <div class="grow">
           <div class="title clamp2">${esc(r.item.descricao)}</div>
-          <div class="meta ellipsis">${dateBR(r.item.dataCompra)} · ${esc(ctx.catName(r.item.categoriaId))} · ${esc(ctx.stageName(r.item.etapaId))}</div>
+          <div class="meta">${dateBR(r.item.dataCompra)} · ${esc(ctx.catName(r.item.categoriaId))} · ${esc(ctx.stageName(r.item.etapaId))}</div>
           <div class="meta">${r.status === 'Quitado' ? '<span class="tag ok">Quitado</span>' : ''}${r.item.natureza !== 'Normal' ? ` <span class="tag ${r.item.natureza === 'Upgrade' ? 'info' : 'warn'}">${r.item.natureza}</span>` : ''}${r.item.incompleto ? ' <span class="tag danger">Incompleto</span>' : ''}</div>
         </div>
         <div class="amount num">${money(r.totals.atualizado)}<div class="meta">${r.totals.pendente > 0 ? 'falta ' + money(r.totals.pendente) : r.status === 'Cancelado' ? 'cancelado' : 'pago'}</div></div>
@@ -139,7 +139,7 @@ export async function renderPagamentos(root, ctx, params) {
     for (const p of list) (groups[p._d.slice(0, 7)] ||= []).push(p);
     root.querySelector('[data-list]').innerHTML = list.length ? Object.entries(groups).map(([ym, ps]) => `
       <div class="section-title row between"><span>${monthLabel(ym)}</span><span class="num">${money(ps.filter(p => p.situacao !== 'Cancelado').reduce((s, p) => s + p.valor, 0))}</span></div>
-      <div class="list">${ps.map(p => {
+      <div class="list grid-wide">${ps.map(p => {
         const it = itemOf(p.itemId).item;
         const prog = p.situacao === 'Programado';
         const cls = prog ? (p._d < hoje ? 'late' : p._d === hoje ? 'today' : '') : '';

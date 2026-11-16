@@ -19,7 +19,8 @@ export async function renderNovo(root, ctx) {
   const st = { tipo: 'Material', natureza: 'Normal', modo: 'avista', parcelas: [] };
 
   root.innerHTML = `
-    <form data-form autocomplete="off" novalidate>
+    <form data-form class="form-2" autocomplete="off" novalidate>
+      <div class="form-col">
       <label class="field"><span>Descrição <em>*</em></span><input class="input" name="descricao" placeholder="ex.: Pintura da casa, Vaso sanitário…" autofocus></label>
       <label class="field"><span>Valor total <em>*</em></span><input class="input money num" name="valor" inputmode="decimal" placeholder="0,00"></label>
       <div class="field"><span>Tipo de custo <em>*</em></span><div class="seg wrap" data-seg="tipo">${TIPOS.map(t => `<button type="button" data-v="${t}">${t}</button>`).join('')}</div></div>
@@ -30,6 +31,8 @@ export async function renderNovo(root, ctx) {
         <label class="field"><span>Data da compra/contratação <em>*</em></span><input class="input" type="date" name="dataCompra" value="${todayISO()}"></label>
       </div>
 
+      </div>
+      <div class="form-col">
       <div class="section-title">Como será pago?</div>
       <div data-modos>
         ${MODOS.map(([k, t, d]) => `
@@ -56,6 +59,7 @@ export async function renderNovo(root, ctx) {
         </div>
       </details>
 
+      </div>
       <div class="sticky-save grid2">
         <button type="button" class="btn ghost block" data-save="novo">Salvar e novo</button>
         <button type="submit" class="btn primary block">Salvar</button>

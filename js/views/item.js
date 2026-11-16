@@ -20,6 +20,8 @@ export async function renderItem(root, ctx, id) {
   const sub = item.subcategoriaId ? ctx.catName(item.subcategoriaId) : '';
 
   root.innerHTML = `
+    <div class="layout-2 item-layout">
+    <section class="col-main sticky-col">
     <div class="card item-head">
       <div class="row between" style="align-items:flex-start">
         <h2>${esc(item.descricao)}</h2>
@@ -56,6 +58,8 @@ export async function renderItem(root, ctx, id) {
       <button class="btn danger-ghost" data-a="cancelar" style="grid-column:1/-1">Cancelar item</button>
     </div>`}
 
+    </section>
+    <section class="col-side">
     <div class="section-title">Pagamentos programados</div>
     <div class="list">${prog.length ? prog.map(p => `
       <div class="li">${pill(p.data, p.data < hoje ? 'late' : p.data === hoje ? 'today' : '')}
@@ -89,6 +93,8 @@ export async function renderItem(root, ctx, id) {
         <div><b>${esc(h.acao)}</b>${h.campo ? ` — ${esc(h.campo)}` : ''}</div>
         ${h.anterior || h.novo ? `<div class="chg">${h.anterior ? esc(h.anterior) + ' → ' : ''}${esc(h.novo || '')}</div>` : ''}
         ${h.motivo ? `<div class="tiny muted">Motivo: ${esc(h.motivo)}</div>` : ''}</div>`).join('') || '<div class="empty">Sem registros.</div>'}</div>
+    </section>
+    </div>
   `;
 
   root.addEventListener('click', async (e) => {
