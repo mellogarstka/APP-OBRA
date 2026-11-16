@@ -130,11 +130,13 @@ async function start() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') queueRender(true); });
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-    navigator.serviceWorker.register('sw.js').then(reg => {
-      reg.addEventListener('updatefound', () => {
-        const nw = reg.installing;
-        nw?.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) toast('Nova versão disponível — feche e abra o app para atualizar.'); });
-      });
+    // Nova versão publicada → o novo Service Worker assume e a página recarrega uma vez, sozinha.
+    let recarregou = false;
+    const tinhaVersao = !!navigator.serviceWorker.controller; // no 1º acesso não recarrega
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (tinhaVersao && !recarregou) { recarregou = true; location.reload(); } });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+      reg.update().catch(() => {});
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
     }).catch(() => {});
   }
 }

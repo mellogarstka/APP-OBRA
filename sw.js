@@ -1,7 +1,7 @@
 // Service Worker — cache completo do app para funcionamento 100% offline.
 // Ao publicar uma nova versão, altere VERSION: o cache antigo é descartado,
 // mas os DADOS (IndexedDB) nunca são tocados pelo Service Worker.
-const VERSION = 'obra-v1.3.0';
+const VERSION = 'obra-v1.3.1';
 const ASSETS = [
   './',
   'css/app.css',
@@ -31,23 +31,32 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // cache: 'reload' → baixa do servidor, nunca do cache HTTP do navegador (evita gravar arquivo antigo na versão nova)
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
-// Cache primeiro (offline garantido); atualiza em segundo plano quando há rede.
+// Rede primeiro (com limite de 3 s): online, sempre a versão mais recente; offline, a cópia guardada.
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
-  e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(hit => {
-    const net = fetch(e.request).then(res => {
-      if (res.ok) caches.open(VERSION).then(c => c.put(e.request, res.clone()));
+  e.respondWith((async () => {
+    const cache = await caches.open(VERSION);
+    const rede = fetch(e.request, { cache: 'no-cache' }).then(res => {
+      if (res.ok) cache.put(e.request, res.clone());
       return res;
-    }).catch(() => hit || caches.match('./index.html'));
-    return hit || net;
-  }));
+    });
+    const limite = new Promise(r => setTimeout(r, 3000));
+    try {
+      const res = await Promise.race([rede, limite.then(() => null)]);
+      if (res) return res;
+    } catch { /* sem rede */ }
+    const hit = await cache.match(e.request, { ignoreSearch: true });
+    if (hit) return hit;
+    try { return await rede; } catch { return (await cache.match('./index.html')) || Response.error(); }
+  })());
 });
 
 self.addEventListener('notificationclick', (e) => {
